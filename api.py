@@ -18,17 +18,13 @@ class Settings(BaseSettings, env_file=".env", extra="ignore"):
     database: str
     logging_config: str
 
-# class Settings(BaseSettings):
-#     database: str
-#     logging_config: str
-
-
-class Book(BaseModel):
-    published: int
-    author: str
-    title: str
-    first_sentence: str
-
+class Class(BaseModel):
+    classID: int
+    department: str
+    sectionNum: int
+    maxEnrollement: int
+    currentEnrollment: int
+    professorID: int
 
 def get_db():
     with contextlib.closing(sqlite3.connect(settings.database)) as db:
@@ -46,7 +42,7 @@ app = FastAPI()
 logging.config.fileConfig(settings.logging_config, disable_existing_loggers=False)
 
 
-@app.get("/class/")
+@app.get("/classes/")
 def list_books(db: sqlite3.Connection = Depends(get_db)):
     books = db.execute("SELECT * FROM Class")
     return {"Class": books.fetchall()}
