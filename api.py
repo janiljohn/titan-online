@@ -26,6 +26,25 @@ class Class(BaseModel):
     currentEnrollment: int
     professorID: int
 
+class Professor(BaseModel):
+    professorID: int
+    firstName: str
+    lastName: str
+    email: str
+
+class Enrollment(BaseModel):
+    enrollmentID: int
+    CWID: int
+    classID: int
+    enrollmentDate: str
+    dropped: bool
+
+class WaitingList(BaseModel):
+    waitingID: int
+    CWID: int
+    classID: int
+    position: int
+
 def get_db():
     with contextlib.closing(sqlite3.connect(settings.database)) as db:
         db.row_factory = sqlite3.Row
