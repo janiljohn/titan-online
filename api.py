@@ -42,34 +42,53 @@ app = FastAPI()
 logging.config.fileConfig(settings.logging_config, disable_existing_loggers=False)
 
 
-@app.get("/classes/")
-def list_books(db: sqlite3.Connection = Depends(get_db)):
+@app.get("/class/")
+def get_classes(db: sqlite3.Connection = Depends(get_db)):
     books = db.execute("SELECT * FROM Class")
     return {"Class": books.fetchall()}
 
+@app.get("/enrollement/")
+def get_enrollement(db: sqlite3.Connection = Depends(get_db)):
+    books = db.execute("SELECT * FROM Enrollment")
+    return {"Class": books.fetchall()}
 
-# @app.post("/books/", status_code=status.HTTP_201_CREATED)
-# def create_book(
-#     book: Book, response: Response, db: sqlite3.Connection = Depends(get_db)
-# ):
-#     b = dict(book)
-#     try:
-#         cur = db.execute(
-#             """
-#             INSERT INTO books(published, author, title, first_sentence)
-#             VALUES(:published, :author, :title, :first_sentence)
-#             """,
-#             b,
-#         )
-#         db.commit()
-#     except sqlite3.IntegrityError as e:
-#         raise HTTPException(
-#             status_code=status.HTTP_409_CONFLICT,
-#             detail={"type": type(e).__name__, "msg": str(e)},
-#         )
-#     b["id"] = cur.lastrowid
-#     response.headers["Location"] = f"/books/{b['id']}"
-#     return b
+@app.get("/professor/")
+def get_professor(db: sqlite3.Connection = Depends(get_db)):
+    books = db.execute("SELECT * FROM Professor")
+    return {"Class": books.fetchall()}
+
+@app.get("/student/")
+def get_student(db: sqlite3.Connection = Depends(get_db)):
+    books = db.execute("SELECT * FROM Student")
+    return {"Class": books.fetchall()}
+
+@app.get("/waitinglist/")
+def get_waitinglist(db: sqlite3.Connection = Depends(get_db)):
+    books = db.execute("SELECT * FROM WaitingList")
+    return {"Class": books.fetchall()}
+
+@app.post("/class/add", status_code=status.HTTP_201_CREATED)
+def create_book(
+    course: Class, response: Response, db: sqlite3.Connection = Depends(get_db)
+):
+    c = dict(Class)
+    try:
+        cur = db.execute(
+            """
+            INSERT INTO Class(classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID)
+            VALUES(:classID, :department, :sectionNum, :name, :maxEnrollement, :currentEnrollment, :professorID)
+            """,
+            c,
+        )
+        db.commit()
+    except sqlite3.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"type": type(e).__name__, "msg": str(e)},
+        )
+    c["classID"] = cur.lastrowid
+    response.headers["Location"] = f"/books/{c['classID']}"
+    return c
 
 
 # @app.get("/books/{id}")
