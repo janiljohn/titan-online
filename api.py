@@ -13,6 +13,7 @@ import typing
 from fastapi import FastAPI, Depends, Response, HTTPException, status
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
+from sqlite3 import Connection, connect
 
 class Settings(BaseSettings, env_file=".env", extra="ignore"):
     database: str
@@ -45,11 +46,31 @@ class WaitingList(BaseModel):
     classID: int
     position: int
 
-def get_db():
-    with contextlib.closing(sqlite3.connect(settings.database)) as db:
-        db.row_factory = sqlite3.Row
-        yield db
+class Database:
+    def __init__(self, database_path):
+        self._database_path = database_path
+        self._pool = []
 
+    def get_connection(self) -> Connection:
+        if not self._pool:
+            connection = connect(self._database_path)
+        else:
+            connection = self._pool.pop()
+        connection.row_factory = sqlite3.Row
+        return connection
+
+    def return_connection(self, connection: Connection):
+        self._pool.append(connection)
+
+# Create a global instance of the Database class
+database = Database("var/titan_online.db")
+
+def get_db():
+    db = database.get_connection()
+    try:
+        yield db
+    finally:
+        database.return_connection(db)
 
 def get_logger():
     return logging.getLogger(__name__)
@@ -109,70 +130,61 @@ def create_book(
     response.headers["Location"] = f"/books/{c['classID']}"
     return c
 
+@app.post("/enroll/")
+def enroll_in_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
+    # cursor = db.cursor()
 
-# @app.get("/books/{id}")
-# def retrieve_book(
-#     id: int, response: Response, db: sqlite3.Connection = Depends(get_db)
-# ):
-#     cur = db.execute("SELECT * FROM books WHERE id = ? LIMIT 1", [id])
-#     books = cur.fetchall()
-#     if not books:
-#         raise HTTPException(
-#             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
-#         )
-#     return {"books": books}
+    # Check if student exists
+    cur = db.execute("SELECT * FROM Student WHERE CWID = ?", (student_id,))
+    student = cur.fetchone()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
 
+    # Check if class exists and is not full
+    cur = db.execute("SELECT * FROM Class WHERE classID = ? AND currentEnrollment < maxEnrollement", (class_id,))
+    class_info = cur.fetchone()
+    if not class_info:
+        raise HTTPException(status_code=400, detail="Class not found or is full")
 
-# SearchParam = collections.namedtuple("SearchParam", ["name", "operator"])
-# SEARCH_PARAMS = [
-#     SearchParam(
-#         "author",
-#         "LIKE",
-#     ),
-#     SearchParam(
-#         "published",
-#         "=",
-#     ),
-#     SearchParam(
-#         "title",
-#         "LIKE",
-#     ),
-#     SearchParam(
-#         "first_sentence",
-#         "LIKE",
-#     ),
-# ]
+    # Check if already enrolled
+    cur = db.execute("SELECT * FROM Enrollment WHERE CWID = ? AND classID = ? AND dropped = 0", (student_id, class_id))
+    enrollment = cur.fetchone()
+    if enrollment:
+        raise HTTPException(status_code=400, detail="Already enrolled in the class")
 
+    # Enroll student
+    cur = db.execute("INSERT INTO Enrollment (CWID, classID, enrollmentDate, dropped) VALUES (?, ?, ?, 0)", (student_id, class_id, 'your_enrollment_date'))
+    cur = db.execute("UPDATE Class SET currentEnrollment = currentEnrollment + 1 WHERE classID = ?", (class_id,))
+    db.commit()
 
-# @app.get("/search")
-# def search(
-#     author: typing.Optional[str] = None,
-#     published: typing.Optional[str] = None,
-#     title: typing.Optional[str] = None,
-#     first_sentence: typing.Optional[str] = None,
-#     db: sqlite3.Connection = Depends(get_db),
-#     logger: logging.Logger = Depends(get_logger),
-# ):
-#     sql = "SELECT * FROM books"
+    return {"status": "success", "message": "Enrollment successful"}
 
-#     conditions = []
-#     values = []
-#     arguments = locals()
+# @app.post("/enroll/", status_code=status.HTTP_201_CREATED)
+# def enroll_in_class(enrollment_request: EnrollmentRequest, db: sqlite3.Connection = Depends(get_db)):
+#     with db:
+#         cursor = db.cursor()
 
-#     for param in SEARCH_PARAMS:
-#         if arguments[param.name]:
-#             if param.operator == "=":
-#                 conditions.append(f"{param.name} = ?")
-#                 values.append(arguments[param.name])
-#             else:
-#                 conditions.append(f"{param.name} LIKE ?")
-#                 values.append(f"%{arguments[param.name]}%")
+#         # Check if student exists
+#         cursor.execute("SELECT * FROM Student WHERE CWID = ?", (enrollment_request.student_id,))
+#         student = cursor.fetchone()
+#         if not student:
+#             raise HTTPException(status_code=404, detail="Student not found")
 
-#     if conditions:
-#         sql += " WHERE "
-#         sql += " AND ".join(conditions)
+#         # Check if class exists and is not full
+#         cursor.execute("SELECT * FROM Class WHERE classID = ? AND currentEnrollment < maxEnrollment", (enrollment_request.class_id,))
+#         class_info = cursor.fetchone()
+#         if not class_info:
+#             raise HTTPException(status_code=400, detail="Class not found or is full")
 
-#     logger.debug(sql)
-#     books = db.execute(sql, values)
+#         # Check if already enrolled
+#         cursor.execute("SELECT * FROM Enrollment WHERE CWID = ? AND classID = ? AND dropped = 0", (enrollment_request.student_id, enrollment_request.class_id))
+#         enrollment = cursor.fetchone()
+#         if enrollment:
+#             raise HTTPException(status_code=400, detail="Already enrolled in the class")
 
-#     return {"books": books.fetchall()}
+#         # Enroll student
+#         cursor.execute("INSERT INTO Enrollment (CWID, classID, enrollmentDate, dropped) VALUES (?, ?, ?, 0)", (enrollment_request.student_id, enrollment_request.class_id, 'your_enrollment_date'))
+#         cursor.execute("UPDATE Class SET currentEnrollment = currentEnrollment + 1 WHERE classID = ?", (enrollment_request.class_id,))
+#         db.commit()
+
+#     return {"status": "success", "message": "Enrollment successful"}
