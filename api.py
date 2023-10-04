@@ -72,12 +72,6 @@ def get_db():
     finally:
         database.return_connection(db)
 
-# def get_db():
-#     with contextlib.closing(sqlite3.connect(settings.database)) as db:
-#         db.row_factory = sqlite3.Row
-#         yield db
-
-
 def get_logger():
     return logging.getLogger(__name__)
 
@@ -137,30 +131,60 @@ def create_book(
     return c
 
 @app.post("/enroll/")
-async def enroll_in_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
-    cursor = db.cursor()
+def enroll_in_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
+    # cursor = db.cursor()
 
     # Check if student exists
-    cursor.execute("SELECT * FROM Student WHERE CWID = ?", (student_id,))
-    student = cursor.fetchone()
+    cur = db.execute("SELECT * FROM Student WHERE CWID = ?", (student_id,))
+    student = cur.fetchone()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
     # Check if class exists and is not full
-    cursor.execute("SELECT * FROM Class WHERE classID = ? AND currentEnrollment < maxEnrollment", (class_id,))
-    class_info = cursor.fetchone()
+    cur = db.execute("SELECT * FROM Class WHERE classID = ? AND currentEnrollment < maxEnrollement", (class_id,))
+    class_info = cur.fetchone()
     if not class_info:
         raise HTTPException(status_code=400, detail="Class not found or is full")
 
     # Check if already enrolled
-    cursor.execute("SELECT * FROM Enrollment WHERE CWID = ? AND classID = ? AND dropped = 0", (student_id, class_id))
-    enrollment = cursor.fetchone()
+    cur = db.execute("SELECT * FROM Enrollment WHERE CWID = ? AND classID = ? AND dropped = 0", (student_id, class_id))
+    enrollment = cur.fetchone()
     if enrollment:
         raise HTTPException(status_code=400, detail="Already enrolled in the class")
 
     # Enroll student
-    cursor.execute("INSERT INTO Enrollment (CWID, classID, enrollmentDate, dropped) VALUES (?, ?, ?, 0)", (student_id, class_id, 'your_enrollment_date'))
-    cursor.execute("UPDATE Class SET currentEnrollment = currentEnrollment + 1 WHERE classID = ?", (class_id,))
+    cur = db.execute("INSERT INTO Enrollment (CWID, classID, enrollmentDate, dropped) VALUES (?, ?, ?, 0)", (student_id, class_id, 'your_enrollment_date'))
+    cur = db.execute("UPDATE Class SET currentEnrollment = currentEnrollment + 1 WHERE classID = ?", (class_id,))
     db.commit()
 
     return {"status": "success", "message": "Enrollment successful"}
+
+# @app.post("/enroll/", status_code=status.HTTP_201_CREATED)
+# def enroll_in_class(enrollment_request: EnrollmentRequest, db: sqlite3.Connection = Depends(get_db)):
+#     with db:
+#         cursor = db.cursor()
+
+#         # Check if student exists
+#         cursor.execute("SELECT * FROM Student WHERE CWID = ?", (enrollment_request.student_id,))
+#         student = cursor.fetchone()
+#         if not student:
+#             raise HTTPException(status_code=404, detail="Student not found")
+
+#         # Check if class exists and is not full
+#         cursor.execute("SELECT * FROM Class WHERE classID = ? AND currentEnrollment < maxEnrollment", (enrollment_request.class_id,))
+#         class_info = cursor.fetchone()
+#         if not class_info:
+#             raise HTTPException(status_code=400, detail="Class not found or is full")
+
+#         # Check if already enrolled
+#         cursor.execute("SELECT * FROM Enrollment WHERE CWID = ? AND classID = ? AND dropped = 0", (enrollment_request.student_id, enrollment_request.class_id))
+#         enrollment = cursor.fetchone()
+#         if enrollment:
+#             raise HTTPException(status_code=400, detail="Already enrolled in the class")
+
+#         # Enroll student
+#         cursor.execute("INSERT INTO Enrollment (CWID, classID, enrollmentDate, dropped) VALUES (?, ?, ?, 0)", (enrollment_request.student_id, enrollment_request.class_id, 'your_enrollment_date'))
+#         cursor.execute("UPDATE Class SET currentEnrollment = currentEnrollment + 1 WHERE classID = ?", (enrollment_request.class_id,))
+#         db.commit()
+
+#     return {"status": "success", "message": "Enrollment successful"}
