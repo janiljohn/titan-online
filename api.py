@@ -184,6 +184,21 @@ def get_class_waitlist(classID: int, response: Response, db: sqlite3.Connection 
     books = db.execute("SELECT * FROM WaitingList WHERE classID = ?", (classID,))
     return {"Class": books.fetchall()}
 
+@app.post("/professor/{professorID}/class/drop_student")
+def drop_student(professorID: int, CWID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+    cur = db.execute("SELECT * FROM Professor WHERE professorID = ?", (professorID,))
+    professor = cur.fetchone()
+
+    # check if professor exists
+    if not professor:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    # Delete enrollment
+    cur = db.execute("DELETE FROM Enrollment WHERE CWID = ?", (CWID,))
+    db.commit()
+    
+    return {"message": f"Student {CWID} dropped from classes by Professor {professorID}"}
+
 # student
 @app.get("/student/")
 def get_student(db: sqlite3.Connection = Depends(get_db)):
