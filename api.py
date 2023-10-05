@@ -90,27 +90,26 @@ def get_classes(db: sqlite3.Connection = Depends(get_db)):
     return {"Class": books.fetchall()}
 
 @app.post("/class/add", status_code=status.HTTP_201_CREATED)
-def create_book(
-    course: Class, response: Response, db: sqlite3.Connection = Depends(get_db)
+def create_class( classID: int, department: str, sectionNum: int, maxEnrollement: int ,currentEnrollment: int ,professorID: int, db: sqlite3.Connection = Depends(get_db)
 ):
-    c = dict(Class)
-    try:
-        cur = db.execute(
-            """
-            INSERT INTO Class(classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID)
-            VALUES(:classID, :department, :sectionNum, :name, :maxEnrollement, :currentEnrollment, :professorID)
-            """,
-            c,
-        )
-        db.commit()
-    except sqlite3.IntegrityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={"type": type(e).__name__, "msg": str(e)},
-        )
-    c["classID"] = cur.lastrowid
-    response.headers["Location"] = f"/books/{c['classID']}"
-    return c
+    # c = dict(Class)
+    # try:
+    #     cur = db.execute(
+    #         """
+    #         INSERT INTO Class(classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID)
+    #         VALUES(:classID, :department, :sectionNum, :name, :maxEnrollement, :currentEnrollment, :professorID)
+    #         """,
+    #         c,
+    #     )
+    #     db.commit()
+    # except sqlite3.IntegrityError as e:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_409_CONFLICT,
+    #         detail={"type": type(e).__name__, "msg": str(e)},
+    #     )
+    # c["classID"] = cur.lastrowid
+    # response.headers["Location"] = f"/books/{c['classID']}"
+    return {"mesage: Class created"}
 
 @app.post("/class/remove")
 def remove_class(classID: int, db: sqlite3.Connection = Depends(get_db)):
