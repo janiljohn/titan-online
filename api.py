@@ -81,30 +81,10 @@ app = FastAPI()
 
 logging.config.fileConfig(settings.logging_config, disable_existing_loggers=False)
 
-
+# class 
 @app.get("/class/")
 def get_classes(db: sqlite3.Connection = Depends(get_db)):
     books = db.execute("SELECT * FROM Class")
-    return {"Class": books.fetchall()}
-
-@app.get("/enrollement/")
-def get_enrollement(db: sqlite3.Connection = Depends(get_db)):
-    books = db.execute("SELECT * FROM Enrollment")
-    return {"Class": books.fetchall()}
-
-@app.get("/professor/")
-def get_professor(db: sqlite3.Connection = Depends(get_db)):
-    books = db.execute("SELECT * FROM Professor")
-    return {"Class": books.fetchall()}
-
-@app.get("/student/")
-def get_student(db: sqlite3.Connection = Depends(get_db)):
-    books = db.execute("SELECT * FROM Student")
-    return {"Class": books.fetchall()}
-
-@app.get("/waitinglist/")
-def get_waitinglist(db: sqlite3.Connection = Depends(get_db)):
-    books = db.execute("SELECT * FROM WaitingList")
     return {"Class": books.fetchall()}
 
 @app.post("/class/add", status_code=status.HTTP_201_CREATED)
@@ -129,6 +109,32 @@ def create_book(
     c["classID"] = cur.lastrowid
     response.headers["Location"] = f"/books/{c['classID']}"
     return c
+
+@app.post("/class/drop")
+def drop_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
+    # Check if student exists
+    cur = db.execute("SELECT * FROM Student WHERE CWID = ?", (student_id,))
+    student = cur.fetchone()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    # Check if already enrolled
+    cur = db.execute("SELECT * FROM Enrollment WHERE CWID = ? AND classID = ? AND dropped = 0", (student_id, class_id))
+    enrollment = cur.fetchone()
+    if enrollment==False:
+        raise HTTPException(status_code=400, detail="Never enrolled in the class")
+
+    # Delete enrollment
+    cur = db.execute("DELETE FROM Enrollment WHERE CWID = ? AND classID = ?", (student_id, class_id))
+    db.commit()
+
+    return {"status": "success", "message": "Disenrollment successful"}
+
+# enrollment
+@app.get("/enrollement/")
+def get_enrollement(db: sqlite3.Connection = Depends(get_db)):
+    books = db.execute("SELECT * FROM Enrollment")
+    return {"Class": books.fetchall()}
 
 @app.post("/enroll/")
 def enroll_in_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
@@ -161,56 +167,36 @@ def enroll_in_class(student_id: int, class_id: int, db: sqlite3.Connection = Dep
 
     return {"status": "success", "message": "Enrollment successful"}
 
-@app.post("/class/drop")
-def drop_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
-    # cursor = db.cursor()
-
-    # Check if student exists
-    cur = db.execute("SELECT * FROM Student WHERE CWID = ?", (student_id,))
-    student = cur.fetchone()
-    if not student:
-        raise HTTPException(status_code=404, detail="Student not found")
-
-    # Check if already enrolled
-    cur = db.execute("SELECT * FROM Enrollment WHERE CWID = ? AND classID = ? AND dropped = 0", (student_id, class_id))
-    enrollment = cur.fetchone()
-    if enrollment==False:
-        raise HTTPException(status_code=400, detail="Never enrolled in the class")
-
-    # Delete enrollment
-    cur = db.execute("DELETE FROM Enrollment WHERE CWID = ? AND classID = ?", (student_id, class_id))
-    db.commit()
-
-    return {"status": "success", "message": "Disenrollment successful"}
+# professor
+@app.get("/professor/")
+def get_professor(db: sqlite3.Connection = Depends(get_db)):
+    books = db.execute("SELECT * FROM Professor")
+    return {"Class": books.fetchall()}
 
 
+@app.get("/professor/{professorID}/class/enrollment/")
+def get_prof_enrollment(professorID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+    books = db.execute("SELECT Enrollment.enrollmentID, Enrollment.CWID, Enrollment.classID, Enrollment.enrollmentDate, Enrollment.dropped FROM Enrollment JOIN Class ON Enrollment.classID = Class.classID JOIN Professor ON Professor.professorID=? AND Class.professorID=?", (professorID, professorID))
+    return {"Class": books.fetchall()}
 
-# @app.post("/enroll/", status_code=status.HTTP_201_CREATED)
-# def enroll_in_class(enrollment_request: EnrollmentRequest, db: sqlite3.Connection = Depends(get_db)):
-#     with db:
-#         cursor = db.cursor()
+@app.get("/instructors/classes/{classID}/waitlist")
+def get_class_waitlist(classID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+    books = db.execute("SELECT * FROM WaitingList WHERE classID = ?", (classID,))
+    return {"Class": books.fetchall()}
 
-#         # Check if student exists
-#         cursor.execute("SELECT * FROM Student WHERE CWID = ?", (enrollment_request.student_id,))
-#         student = cursor.fetchone()
-#         if not student:
-#             raise HTTPException(status_code=404, detail="Student not found")
+# student
+@app.get("/student/")
+def get_student(db: sqlite3.Connection = Depends(get_db)):
+    books = db.execute("SELECT * FROM Student")
+    return {"Class": books.fetchall()}
 
-#         # Check if class exists and is not full
-#         cursor.execute("SELECT * FROM Class WHERE classID = ? AND currentEnrollment < maxEnrollment", (enrollment_request.class_id,))
-#         class_info = cursor.fetchone()
-#         if not class_info:
-#             raise HTTPException(status_code=400, detail="Class not found or is full")
+@app.get("/students/{CWID}/waiting_list_position")
+def get_student_waitlist_pos(CWID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+    books = db.execute("SELECT position from WaitingList WHERE CWID = ?", (CWID,))
+    return {"Class": books.fetchall()}
 
-#         # Check if already enrolled
-#         cursor.execute("SELECT * FROM Enrollment WHERE CWID = ? AND classID = ? AND dropped = 0", (enrollment_request.student_id, enrollment_request.class_id))
-#         enrollment = cursor.fetchone()
-#         if enrollment:
-#             raise HTTPException(status_code=400, detail="Already enrolled in the class")
-
-#         # Enroll student
-#         cursor.execute("INSERT INTO Enrollment (CWID, classID, enrollmentDate, dropped) VALUES (?, ?, ?, 0)", (enrollment_request.student_id, enrollment_request.class_id, 'your_enrollment_date'))
-#         cursor.execute("UPDATE Class SET currentEnrollment = currentEnrollment + 1 WHERE classID = ?", (enrollment_request.class_id,))
-#         db.commit()
-
-#     return {"status": "success", "message": "Enrollment successful"}
+# waiting list
+@app.get("/waitinglist/")
+def get_waitinglist(db: sqlite3.Connection = Depends(get_db)):
+    books = db.execute("SELECT * FROM WaitingList")
+    return {"Class": books.fetchall()}
