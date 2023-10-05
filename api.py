@@ -152,12 +152,38 @@ def enroll_in_class(student_id: int, class_id: int, db: sqlite3.Connection = Dep
     if enrollment:
         raise HTTPException(status_code=400, detail="Already enrolled in the class")
 
+    newID = str(student_id) + "" + str(class_id)
+
     # Enroll student
-    cur = db.execute("INSERT INTO Enrollment (CWID, classID, enrollmentDate, dropped) VALUES (?, ?, ?, 0)", (student_id, class_id, 'your_enrollment_date'))
+    cur = db.execute("INSERT INTO Enrollment (enrollmentID, CWID, classID, enrollmentDate, dropped) VALUES (?, ?, ?, ?, 0)", (newID, student_id, class_id, 'your_enrollment_date'))
     cur = db.execute("UPDATE Class SET currentEnrollment = currentEnrollment + 1 WHERE classID = ?", (class_id,))
     db.commit()
 
     return {"status": "success", "message": "Enrollment successful"}
+
+@app.post("/class/drop")
+def drop_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
+    # cursor = db.cursor()
+
+    # Check if student exists
+    cur = db.execute("SELECT * FROM Student WHERE CWID = ?", (student_id,))
+    student = cur.fetchone()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    # Check if already enrolled
+    cur = db.execute("SELECT * FROM Enrollment WHERE CWID = ? AND classID = ? AND dropped = 0", (student_id, class_id))
+    enrollment = cur.fetchone()
+    if enrollment==False:
+        raise HTTPException(status_code=400, detail="Never enrolled in the class")
+
+    # Delete enrollment
+    cur = db.execute("DELETE FROM Enrollment WHERE CWID = ? AND classID = ?", (student_id, class_id))
+    db.commit()
+
+    return {"status": "success", "message": "Disenrollment successful"}
+
+
 
 # @app.post("/enroll/", status_code=status.HTTP_201_CREATED)
 # def enroll_in_class(enrollment_request: EnrollmentRequest, db: sqlite3.Connection = Depends(get_db)):

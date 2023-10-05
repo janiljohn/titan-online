@@ -81,11 +81,11 @@ VALUES(3, 'Investment Banking', 9, 'Intro to Stock Regulations',35, 34, 3);
 INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
 VALUES(11, 1, 1, '2023-08-5', 0);
 INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(12, 1, 3, '2023-08-5', 0);
+VALUES(13, 1, 3, '2023-08-5', 0);
 INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(21, 2, 2, '2023-08-5', 0);
+VALUES(22, 2, 2, '2023-08-5', 0);
 INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(22, 2, 3, '2023-08-5', 0);
+VALUES(23, 2, 3, '2023-08-5', 0);
 INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
 VALUES(31, 3, 1, '2023-08-5', 0);
 INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
@@ -97,7 +97,7 @@ VALUES(42, 4, 2, '2023-08-5', 0);
 INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
 VALUES(43, 4, 3, '2023-08-5', 1);
 INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(51, 5, 2, '2023-08-5', 1);
+VALUES(52, 5, 2, '2023-08-5', 1);
 
 INSERT INTO WaitingList(waitingID, CWID, classID, position)
 VALUES(11, 2, 3, 1);
