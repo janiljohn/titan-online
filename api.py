@@ -3,6 +3,8 @@
 # Adapted from "Creating Web APIs with Python and Flask"
 # <https://programminghistorian.org/en/lessons/creating-apis-with-python-and-flask>.
 #
+# compile the database
+# ./bin/init.sh
 
 import collections
 import contextlib
@@ -109,6 +111,18 @@ def create_book(
     c["classID"] = cur.lastrowid
     response.headers["Location"] = f"/books/{c['classID']}"
     return c
+
+@app.post("/class/remove")
+def remove_class(classID: int, db: sqlite3.Connection = Depends(get_db)):
+    # gotta add more stuff herer
+
+    return {"message": f"Class {classID} removed successfully"}
+
+@app.post("/class/changeProfessor")
+def change_professor(classID: int, professorID: int , db: sqlite3.Connection = Depends(get_db)):
+    # gotta add more stuff herer
+    
+    return {"message": f"Professor {professorID} was changed successfully"}
 
 @app.post("/class/drop")
 def drop_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
