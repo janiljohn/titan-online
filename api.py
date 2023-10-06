@@ -27,6 +27,7 @@ class Class(BaseModel):
   classID: int
   department: str
   sectionNum: int
+  name: str
   maxEnrollement: int
   currentEnrollment: int
   professorID: int
@@ -145,26 +146,55 @@ def drop_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(
 
 ## POST
 @app.post("/class/add", status_code=status.HTTP_201_CREATED)
-def create_class( classID: int, department: str, sectionNum: int, maxEnrollement: int ,currentEnrollment: int ,professorID: int, db: sqlite3.Connection = Depends(get_db)
+def create_class( classID: int, department: str, sectionNum: int, name: str ,maxEnrollement: int ,currentEnrollment: int ,professorID: int, db: sqlite3.Connection = Depends(get_db)
 ):
   
-  # stuff goes here
-
-  return {"mesage: Class created"}
+  try:
+    # Insert class details into the database
+    cur = db.execute(
+        """
+        INSERT INTO Class (classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID)
+    )
+    db.commit()
+    return {"message": f"Class {classID} added successfully"}
+  except sqlite3.IntegrityError as e:
+      raise HTTPException(
+          status_code=status.HTTP_409_CONFLICT,
+          detail={"type": type(e).__name__, "msg": str(e)},
+      )
 
 ## POST
 @app.post("/class/remove")
 def remove_class(classID: int, db: sqlite3.Connection = Depends(get_db)):
 
-  # gotta add more stuff herer
-
-  return {"message": f"Class {classID} removed successfully"}
+  try:
+      # Delete class from the database
+      cur = db.execute("DELETE FROM Class WHERE classID = ?", (classID,))
+      db.commit()
+      return {"message": f"Class {classID} removed successfully"}
+  except Exception as e:
+      raise HTTPException(
+          status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+          detail={"type": type(e).__name__, "msg": str(e)},
+      )
 
 ## POST
 @app.post("/class/changeProfessor")
 def change_professor(classID: int, professorID: int , db: sqlite3.Connection = Depends(get_db)):
-  # gotta add more stuff herer
-   return {"message": f"Professor {professorID} was changed successfully"}
+  # gotta add more stuff here
+  try:
+      # Update professor for the class in the database
+      cur = db.execute("UPDATE Class SET professorID = ? WHERE classID = ?", (professorID, classID))
+      db.commit()
+      return {"message": f"Professor for class {classID} changed successfully"}
+  except Exception as e:
+      raise HTTPException(
+          status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+          detail={"type": type(e).__name__, "msg": str(e)},
+      )
 
 # professor
 ## GET
