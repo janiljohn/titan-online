@@ -15,8 +15,6 @@ from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 from sqlite3 import Connection, connect
 from datetime import datetime
-from fastapi import HTTPException, Depends, status
-from fastapi import status
 
 class Settings(BaseSettings, env_file=".env", extra="ignore"):
     database: str
@@ -103,11 +101,6 @@ def get_classes(db: sqlite3.Connection = Depends(get_db)):
 @app.post("/student/class/enroll/")
 def enroll_in_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
     enrollment_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cur = db.execute("SELECT auto_enrollment FROM Settings")
-    setting = cur.fetchone()
-
-    if not setting or not setting[0]: 
-      raise HTTPException(status_code=400, detail="Auto enrollment is currently disabled")
     # Check if student exists
     cur = db.execute("SELECT * FROM Student WHERE CWID = ?", (student_id,))
     student = cur.fetchone()
@@ -159,11 +152,6 @@ def enroll_in_class(student_id: int, class_id: int, db: sqlite3.Connection = Dep
         return {"status": "success", "message": "Class is full. Added to waiting list at position {}".format(position)}
 
 def handle_waiting_list(class_id: int, db: sqlite3.Connection):
-    # Check the setting here
-    cur = db.execute("SELECT auto_enrollment FROM Settings")
-    setting = cur.fetchone()
-    if not setting or not setting[0]:
-        raise HTTPException(status_code=400, detail="Auto enrollment is currently disabled")
     # Get the student at the front of the waiting list
     cur = db.execute("SELECT * FROM WaitingList WHERE classID = ? ORDER BY enrollmentDate ASC LIMIT 1", (class_id,))
     waiting_student = cur.fetchone()
@@ -299,21 +287,6 @@ def change_professor(classID: int, professorID: int , db: sqlite3.Connection = D
           status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
           detail={"type": type(e).__name__, "msg": str(e)},
       )
-
-## POST
-@app.post("/registrar/waitinglist")
-async def set_auto_enrollment(auto_enrollment_status: bool, db: sqlite3.Connection = Depends(get_db)):
-    try:
-        # Update the auto_enrollment setting
-        db.execute("UPDATE Settings SET auto_enrollment = ?", (auto_enrollment_status,))
-        db.commit()
-        return {"status": "success", "message": f"Auto enrollment set to {auto_enrollment_status}"}
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
-
 
 # Waiting List
 ## GET
