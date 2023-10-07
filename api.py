@@ -149,8 +149,8 @@ def get_prof_dropped_students(professorID: int, response: Response, db: sqlite3.
   books = db.execute("SELECT Enrollment.enrollmentID, Enrollment.CWID, Enrollment.classID, Enrollment.enrollmentDate, Enrollment.dropped FROM Enrollment JOIN Class ON Enrollment.classID = Class.classID AND Enrollment.dropped = 1 JOIN Professor ON Professor.professorID=? AND Class.professorID=?", (professorID, professorID))
   return {"Class": books.fetchall()}
 
-## POST
-@app.post("/professor/class/drop_student")
+## PUT
+@app.put("/professor/class/drop_student")
 def drop_student(professorID: int, CWID: int, class_id: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
   cur = db.execute("SELECT * FROM Professor WHERE professorID = ?", (professorID,))
   professor = cur.fetchone()
@@ -190,8 +190,8 @@ def create_class(department: str, sectionNum: int, name: str ,maxEnrollement: in
           detail={"type": type(e).__name__, "msg": str(e)},
       )
 
-## POST
-@app.post("/registrar/class/remove")
+## DELETE
+@app.delete("/registrar/class/remove")
 def remove_class(classID: int, db: sqlite3.Connection = Depends(get_db)):
 
   try:
