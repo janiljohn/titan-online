@@ -101,8 +101,8 @@ def enroll_in_class(student_id: int, class_id: int, db: sqlite3.Connection = Dep
 
   return {"status": "success", "message": "Enrollment successful"}
 
-## POST
-@app.post("/student/class/drop")
+# PUT
+@app.put("/student/class/drop")
 def drop_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
   # Check if student exists
   cur = db.execute("SELECT * FROM Student WHERE CWID = ?", (student_id,))
@@ -205,8 +205,8 @@ def remove_class(classID: int, db: sqlite3.Connection = Depends(get_db)):
           detail={"type": type(e).__name__, "msg": str(e)},
       )
 
-## POST
-@app.post("/registrar/class/changeProfessor")
+# PUT
+@app.put("/registrar/class/changeProfessor")
 def change_professor(classID: int, professorID: int , db: sqlite3.Connection = Depends(get_db)):
   # gotta add more stuff here
   try:
@@ -233,8 +233,8 @@ def get_student_waitlist_pos(CWID: int, response: Response, db: sqlite3.Connecti
   books = db.execute("SELECT position from WaitingList WHERE CWID = ?", (CWID,))
   return {"Class": books.fetchall()}
 
-## POST
-@app.post("/students/{CWID}/waiting_list/remove/{classID}")
+# DELETE
+@app.delete("/students/{CWID}/waiting_list/remove/{classID}")
 def remove_student_from_waiting_list(CWID: int, classID: int, db: sqlite3.Connection = Depends(get_db)):
     try:
         # Check if student exists
