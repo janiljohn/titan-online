@@ -72,7 +72,7 @@ def get_classes(db: sqlite3.Connection = Depends(get_db)):
   return {"Class": cur.fetchall()}
 
 ## POST
-@app.post("student/class/enroll/")
+@app.post("/student/class/enroll/")
 def enroll_in_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
   # Check if student exists
   cur = db.execute("SELECT * FROM Student WHERE CWID = ?", (student_id,))
@@ -102,7 +102,7 @@ def enroll_in_class(student_id: int, class_id: int, db: sqlite3.Connection = Dep
   return {"status": "success", "message": "Enrollment successful"}
 
 ## POST
-@app.post("student/class/drop")
+@app.post("/student/class/drop")
 def drop_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
   # Check if student exists
   cur = db.execute("SELECT * FROM Student WHERE CWID = ?", (student_id,))
@@ -196,7 +196,7 @@ def remove_class(classID: int, db: sqlite3.Connection = Depends(get_db)):
 
   try:
       # Delete class from the database
-      cur = db.execute("DELETE from Enrollment WHERE classID = ?", (classID,))
+      cur = db.execute("DELETE FROM Class WHERE classID = ?", (classID,))
       db.commit()
       return {"message": f"Class {classID} removed successfully"}
   except Exception as e:
@@ -225,6 +225,7 @@ def change_professor(classID: int, professorID: int , db: sqlite3.Connection = D
 @app.get("/waitinglist/")
 def get_waitinglist(db: sqlite3.Connection = Depends(get_db)):
   books = db.execute("SELECT * FROM WaitingList")
+  return {"Class": books.fetchall()}
 
 ## GET
 @app.get("/students/{CWID}/waiting_list_position")
