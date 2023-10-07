@@ -46,7 +46,7 @@ A step by step series of examples that tell you how to get a development environ
     ```bash
     ./bin/init.sh
     ```
-7. **Install any required python libraries**
+5. **Install any required python libraries**
 
 
 ### Running the Project
