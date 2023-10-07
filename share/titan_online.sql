@@ -34,7 +34,7 @@ CREATE TABLE Class (
     department TEXT,
     sectionNum INT,
     name TEXT,
-    maxEnrollement INT,
+    maxEnrollment INT,
     currentEnrollment INT,
     professorID INT,
     FOREIGN KEY (professorID) REFERENCES Professor(professorID)
@@ -42,7 +42,7 @@ CREATE TABLE Class (
 
 DROP TABLE IF EXISTS Enrollment;
 CREATE TABLE Enrollment (
-    enrollmentID INT PRIMARY KEY,
+    enrollmentID INTEGER PRIMARY KEY AUTOINCREMENT, 
     CWID INT,
     classID INT,
     enrollmentDate DATE,
@@ -53,13 +53,21 @@ CREATE TABLE Enrollment (
 
 DROP TABLE IF EXISTS WaitingList;
 CREATE TABLE WaitingList (
-    waitingID INT PRIMARY KEY,
+    waitingID INTEGER PRIMARY KEY AUTOINCREMENT,
     CWID INT,
     classID INT,
     position INT,
+    enrollmentDate DATE,
     FOREIGN KEY (CWID) REFERENCES Student(CWID),
     FOREIGN KEY (classID) REFERENCES Class(classID)
 );
+
+DROP TABLE IF EXISTS Settings;
+CREATE TABLE IF NOT EXISTS Settings (
+    auto_enrollment BOOLEAN DEFAULT 1
+);
+
+INSERT INTO Settings (auto_enrollment) VALUES (1);
 
 INSERT INTO Student(CWID, firstName, lastName, email)
 VALUES(1, 'Jessica', 'Pearson', 'jpearson@csu.fullerton.edu');
@@ -158,7 +166,7 @@ VALUES(47, 'Chris', 'Hadfield', 'chadfield@csu.fullerton.edu');
 INSERT INTO Student(CWID, firstName, lastName, email)
 VALUES(48, 'Sally', 'Ride', 'sride@csu.fullerton.edu');
 INSERT INTO Student(CWID, firstName, lastName, email)
-VALUES(49, 'Carl', 'Sagan', 'csagan@csu.fullerton.edu');
+VALUES(49, 'Carl', 'Sagan', 'csagan@csu.fullewaitingID');
 INSERT INTO Student(CWID, firstName, lastName, email)
 VALUES(50, 'Stephen', 'Hawking', 'shawking@csu.fullerton.edu');
 
@@ -187,173 +195,145 @@ INSERT INTO Registrar(registrarID, firstName, lastName, email)
 VALUES(10, 'Ernest', 'Hemingway', 'ehemingway@fullerton.edu');
 
 
-INSERT INTO Class(classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID) 
+INSERT INTO Class(classID, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID) 
 VALUES(1, 'Ethics', 2, 'Intro to Ethics',35, 4, 1);
-INSERT INTO Class(classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID) 
+INSERT INTO Class(classID, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID) 
 VALUES(2, 'Corporate Law', 5, 'Foreign Affairs 101',40, 18, 2);
-INSERT INTO Class(classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID) 
+INSERT INTO Class(classID, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID) 
 VALUES(3, 'Investment Banking', 9, 'Intro to Stock Regulations',35, 34, 3);
-INSERT INTO Class(classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID) 
+INSERT INTO Class(classID, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID) 
 VALUES(4, 'Computer Science', 10, 'Data Structures', 30, 20, 9);
-INSERT INTO Class(classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID) 
+INSERT INTO Class(classID, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID) 
 VALUES(5, 'Physics', 15, 'Quantum Mechanics', 25, 15, 5);
-INSERT INTO Class(classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID) 
+INSERT INTO Class(classID, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID) 
 VALUES(6, 'Mathematics', 3, 'Linear Algebra', 28, 22, 6);
-INSERT INTO Class(classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID) 
+INSERT INTO Class(classID, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID) 
 VALUES(7, 'History', 7, 'World History 101', 35, 30, 7);
-INSERT INTO Class(classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID) 
+INSERT INTO Class(classID, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID) 
 VALUES(8, 'Biology', 12, 'Human Anatomy', 30, 25, 8);
-INSERT INTO Class(classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID) 
+INSERT INTO Class(classID, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID) 
 VALUES(9, 'Music', 5, 'Intro to Rock Music', 25, 20, 4);
-INSERT INTO Class(classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID) 
+INSERT INTO Class(classID, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID) 
 VALUES(10, 'Chemistry', 8, 'Organic Chemistry', 28, 24, 10);
 
 
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(11, 1, 1, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(13, 1, 3, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(22, 2, 2, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(23, 2, 3, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(31, 3, 1, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(32, 3, 2, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(41, 4, 1, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(42, 4, 2, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(43, 4, 3, '2023-08-5', 1);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(52, 5, 2, '2023-08-5', 1);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(64, 6, 4, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(74, 7, 4, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(85, 8, 5, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(95, 9, 5, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(106, 10, 6, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(116, 11, 6, '2023-08-5', 1);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(110, 11, 10, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(124, 12, 4, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(127, 12, 7, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(131, 13, 1, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(137, 13, 7, '2023-08-5', 1);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(147, 14, 7, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(148, 14, 8, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(158, 15, 8, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(169, 16, 9, '2023-08-5', 1);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(1710, 17, 10, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(181, 18, 1, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(192, 19, 2, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(205, 20, 5, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(2110, 21, 10, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(222, 22, 2, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(233, 23, 3, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(244, 24, 4, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(257, 25, 7, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(268, 26, 8, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(279, 27, 9, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(2810, 28, 10, '2023-08-5', 1);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(291, 29, 1, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(303, 30, 3, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(315, 31, 5, '2023-08-5', 1);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(324, 32, 4, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(336, 33, 6, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(347, 34, 7, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(358, 35, 8, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(369, 36, 9, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(3710, 37, 10, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(381, 38, 1, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(392, 39, 2, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(403, 40, 3, '2023-08-5', 1);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(415, 41, 5, '2023-08-5', 1);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(424, 42, 4, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(436, 43, 6, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(447, 44, 7, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(451, 45, 1, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(463, 46, 3, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(478, 47, 8, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(484, 48, 4, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(4910, 49, 10, '2023-08-5', 0);
-INSERT INTO Enrollment(enrollmentID, CWID, classID, enrollmentDate, dropped)
-VALUES(509, 50, 9, '2023-08-5', 1);
-
-
-INSERT INTO WaitingList(waitingID, CWID, classID, position)
-VALUES(11, 2, 3, 1);
-INSERT INTO WaitingList(waitingID, CWID, classID, position)
-VALUES(12, 5, 3, 2);
-INSERT INTO WaitingList(waitingID, CWID, classID, position)
-VALUES(13, 7, 3, 3);
-INSERT INTO WaitingList(waitingID, CWID, classID, position)
-VALUES(14, 12, 1, 1);
-INSERT INTO WaitingList(waitingID, CWID, classID, position)
-VALUES(15, 15, 1, 2);
-INSERT INTO WaitingList(waitingID, CWID, classID, position)
-VALUES(16, 20, 1, 3);
-INSERT INTO WaitingList(waitingID, CWID, classID, position)
-VALUES(17, 22, 5, 1);
-INSERT INTO WaitingList(waitingID, CWID, classID, position)
-VALUES(18, 25, 5, 2);
-INSERT INTO WaitingList(waitingID, CWID, classID, position)
-VALUES(19, 28, 6, 1);
-INSERT INTO WaitingList(waitingID, CWID, classID, position)
-VALUES(20, 32, 6, 2);
-INSERT INTO WaitingList(waitingID, CWID, classID, position)
-VALUES(21, 36, 2, 1);
-INSERT INTO WaitingList(waitingID, CWID, classID, position)
-VALUES(22, 40, 2, 2);
-INSERT INTO WaitingList(waitingID, CWID, classID, position)
-VALUES(23, 44, 4, 1);
+INSERT INTO Enrollment(CWID, classID, enrollmentDate, dropped)
+VALUES(1, 1, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(1, 3, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(2, 2, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(2, 3, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(3, 1, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(3, 2, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(4, 1, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(4, 2, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(4, 3, '2023-08-5', 1);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(5, 2, '2023-08-5', 1);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(6, 4, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(7, 4, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(8, 5, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(9, 5, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(10, 6, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(11, 6, '2023-08-5', 1);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(11, 10, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(12, 4, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(12, 7, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(13, 1, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(13, 7, '2023-08-5', 1);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(14, 7, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(14, 8, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(15, 8, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(16, 9, '2023-08-5', 1);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(17, 10, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(18, 1, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(19, 2, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(20, 5, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(21, 10, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(22, 2, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(23, 3, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(24, 4, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(25, 7, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(26, 8, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(27, 9, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(28, 10, '2023-08-5', 1);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(29, 1, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(30, 3, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(31, 5, '2023-08-5', 1);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(32, 4, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(33, 6, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(34, 7, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(35, 8, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(36, 9, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(37, 10, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(38, 1, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(39, 2, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(40, 3, '2023-08-5', 1);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(41, 5, '2023-08-5', 1);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(42, 4, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(43, 6, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(44, 7, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(45, 1, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(46, 3, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(47, 8, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(48, 4, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(49, 10, '2023-08-5', 0);
+INSERT INTO Enrollment( CWID, classID, enrollmentDate, dropped)
+VALUES(50, 9, '2023-08-5', 1);
 
 COMMIT;

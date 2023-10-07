@@ -18,6 +18,7 @@ from fastapi import FastAPI, Depends, Response, HTTPException, status
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 from sqlite3 import Connection, connect
+from datetime import datetime
 
 class Settings(BaseSettings, env_file=".env", extra="ignore"):
   database: str
@@ -74,32 +75,80 @@ def get_classes(db: sqlite3.Connection = Depends(get_db)):
 ## POST
 @app.post("/student/class/enroll/")
 def enroll_in_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
-  # Check if student exists
-  cur = db.execute("SELECT * FROM Student WHERE CWID = ?", (student_id,))
-  student = cur.fetchone()
-  if not student:
-      raise HTTPException(status_code=404, detail="Student not found")
+    enrollment_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Check if student exists
+    cur = db.execute("SELECT * FROM Student WHERE CWID = ?", (student_id,))
+    student = cur.fetchone()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
 
-  # Check if class exists and is not full
-  cur = db.execute("SELECT * FROM Class WHERE classID = ? AND currentEnrollment < maxEnrollement", (class_id,))
-  class_info = cur.fetchone()
-  if not class_info:
-      raise HTTPException(status_code=400, detail="Class not found or is full")
-  
-  # Check if already enrolled
-  cur = db.execute("SELECT * FROM Enrollment WHERE CWID = ? AND classID = ? AND dropped = 0", (student_id, class_id))
-  enrollment = cur.fetchone()
-  if enrollment:
-      raise HTTPException(status_code=400, detail="Already enrolled in the class")
+    # Check if class exists
+    cur = db.execute("SELECT * FROM Class WHERE classID = ?", (class_id,))
+    class_info = cur.fetchone()
+    if not class_info:
+        raise HTTPException(status_code=400, detail="Class not found")
 
-  newID = str(student_id) + "" + str(class_id)
+    # Check if already enrolled 
+    cur = db.execute("SELECT * FROM Enrollment WHERE CWID = ? AND classID = ? AND dropped = 0", (student_id, class_id))
+    enrollment = cur.fetchone()
+    if enrollment:
+        raise HTTPException(status_code=400, detail="Already enrolled in the class")
+    
+    # Check if already in the waiting list
+    cur = db.execute("SELECT * FROM WaitingList WHERE CWID = ? AND classID = ?", (student_id, class_id))
+    waiting = cur.fetchone()
+    if waiting:
+        raise HTTPException(status_code=400, detail="Already on the waiting list for this class")
 
-  # Enroll student
-  cur = db.execute("INSERT INTO Enrollment (enrollmentID, CWID, classID, enrollmentDate, dropped) VALUES (?, ?, ?, ?, 0)", (newID, student_id, class_id, 'your_enrollment_date'))
-  cur = db.execute("UPDATE Class SET currentEnrollment = currentEnrollment + 1 WHERE classID = ?", (class_id,))
-  db.commit()
+    # Check if class is full
+    if class_info['currentEnrollment'] < class_info['maxEnrollment']:
+        # Enroll student
+        cur = db.execute("INSERT INTO Enrollment (CWID, classID, enrollmentDate, dropped) VALUES (?, ?, ?, 0)", (student_id, class_id, enrollment_date))
+        cur = db.execute("UPDATE Class SET currentEnrollment = currentEnrollment + 1 WHERE classID = ?", (class_id,))
+        db.commit()
+        return {"status": "success", "message": "Enrollment successful"}
+    else:
+        # Check if student is in fewer than 3 waiting lists
+        cur = db.execute("SELECT COUNT(*) FROM WaitingList WHERE CWID = ?", (student_id,))
+        waiting_count = cur.fetchone()[0]
+        if waiting_count >= 3:
+            raise HTTPException(status_code=400, detail="Cannot be on more than 3 waiting lists")
 
-  return {"status": "success", "message": "Enrollment successful"}
+        # Check if waiting list is full (max is 15)
+        cur = db.execute("SELECT COUNT(*) FROM WaitingList WHERE classID = ?", (class_id,))
+        waiting_list_count = cur.fetchone()[0]
+        if waiting_list_count >= 15:
+            raise HTTPException(status_code=400, detail="Waiting list is full, cannot add more students")
+
+        # Add student to waiting list
+        position = waiting_list_count + 1  # Next position in the waiting list
+        cur = db.execute("INSERT INTO WaitingList (CWID, classID, position, enrollmentDate) VALUES (?, ?, ?, ?)", (student_id, class_id, position, enrollment_date))
+        db.commit()
+        return {"status": "success", "message": "Class is full. Added to waiting list at position {}".format(position)}
+
+def handle_waiting_list(class_id: int, db: sqlite3.Connection):
+    # Get the student at the front of the waiting list
+    cur = db.execute("SELECT * FROM WaitingList WHERE classID = ? ORDER BY enrollmentDate ASC LIMIT 1", (class_id,))
+    waiting_student = cur.fetchone()
+
+    if waiting_student:
+        # Enroll this student
+        student_id = waiting_student['CWID']
+        enrollment_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cur = db.execute("INSERT INTO Enrollment (CWID, classID, enrollmentDate, dropped) VALUES (?, ?, ?, 0)", (student_id, class_id, enrollment_date))
+        cur = db.execute("UPDATE Class SET currentEnrollment = currentEnrollment + 1 WHERE classID = ?", (class_id,))
+
+        # Remove this student from the waiting list
+        cur = db.execute("DELETE FROM WaitingList WHERE waitingID = ?", (waiting_student['waitingID'],))
+
+        # Optionally, update positions of remaining students in the waiting list if you are maintaining 'position' values
+        # (this part can be omitted if 'position' values are not crucial for your application)
+        cur = db.execute("SELECT * FROM WaitingList WHERE classID = ? ORDER BY enrollmentDate ASC", (class_id,))
+        remaining_students = cur.fetchall()
+        for position, student in enumerate(remaining_students, start=1):
+            cur = db.execute("UPDATE WaitingList SET position = ? WHERE waitingID = ?", (position, student['waitingID']))
+
+        db.commit()
 
 # PUT
 @app.put("/student/class/drop")
@@ -123,14 +172,15 @@ def drop_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(
   db.commit()
   return {"status": "success", "message": "Disenrollment successful"}
 
-# enrollment
+# Enrollment
 ## GET
-@app.get("/enrollement/")
-def get_enrollement(db: sqlite3.Connection = Depends(get_db)):
-  books = db.execute("SELECT * FROM Enrollment")
+@app.get("/enrollment/")
+def get_enrollment(db: sqlite3.Connection = Depends(get_db)):
+  books = db.execute("SELECT * FROM Enrollment WHERE dropped = 0")
   return {"Class": books.fetchall()}
 
-# professor
+# Professor
+
 ## GET
 @app.get("/professor/")
 def get_professor(db: sqlite3.Connection = Depends(get_db)):
@@ -167,7 +217,7 @@ def drop_student(professorID: int, CWID: int, class_id: int, response: Response,
 # Registrar
 ## POST
 @app.post("/registrar/class/add", status_code=status.HTTP_201_CREATED)
-def create_class(department: str, sectionNum: int, name: str ,maxEnrollement: int ,currentEnrollment: int ,professorID: int, db: sqlite3.Connection = Depends(get_db)
+def create_class(department: str, sectionNum: int, name: str ,maxEnrollment: int ,currentEnrollment: int ,professorID: int, db: sqlite3.Connection = Depends(get_db)
 ):
   
   try:
@@ -177,10 +227,10 @@ def create_class(department: str, sectionNum: int, name: str ,maxEnrollement: in
 
     cur = db.execute(
         """
-        INSERT INTO Class (classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID)
+        INSERT INTO Class (classID, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (num, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID)
+        (num, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID)
     )
     db.commit()
     return {"message": f"Class {num} added successfully"}
@@ -266,7 +316,7 @@ def remove_student_from_waiting_list(CWID: int, classID: int, db: sqlite3.Connec
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"type": type(e).__name__, "msg": str(e)},
         )
-    
+  
 ## GET
 @app.get("/professor/{professorID}/classes/{classID}/waitlist")
 def get_class_waitlist(professorID: int, classID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
