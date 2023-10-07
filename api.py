@@ -85,7 +85,14 @@ app = FastAPI()
 
 logging.config.fileConfig(settings.logging_config, disable_existing_loggers=False)
 
-# class
+# Students
+## GET
+@app.get("/students/")
+def get_students(db: sqlite3.Connection = Depends(get_db)):
+  books = db.execute("SELECT * FROM Student")
+  return {"Class": books.fetchall()}
+
+# Class
 ## GET
 @app.get("/class/")
 def get_classes(db: sqlite3.Connection = Depends(get_db)):
@@ -146,8 +153,50 @@ def drop_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(
   db.commit()
   return {"status": "success", "message": "Disenrollment successful"}
 
+# enrollment
+## GET
+@app.get("/enrollement/")
+def get_enrollement(db: sqlite3.Connection = Depends(get_db)):
+  books = db.execute("SELECT * FROM Enrollment")
+  return {"Class": books.fetchall()}
+
+# professor
+## GET
+@app.get("/professor/")
+def get_professor(db: sqlite3.Connection = Depends(get_db)):
+  books = db.execute("SELECT * FROM Professor")
+  return {"Class": books.fetchall()}
+
+## GET
+@app.get("/professor/{professorID}/class/enrollment/")
+def get_prof_enrollment(professorID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+  books = db.execute("SELECT Enrollment.enrollmentID, Enrollment.CWID, Enrollment.classID, Enrollment.enrollmentDate, Enrollment.dropped FROM Enrollment JOIN Class ON Enrollment.classID = Class.classID AND Enrollment.dropped = 0 JOIN Professor ON Professor.professorID=? AND Class.professorID=?", (professorID, professorID))
+  return {"Class": books.fetchall()}
+
+## GET
+@app.get("/professor/{professorID}/class/dropped/")
+def get_prof_dropped_students(professorID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+  books = db.execute("SELECT Enrollment.enrollmentID, Enrollment.CWID, Enrollment.classID, Enrollment.enrollmentDate, Enrollment.dropped FROM Enrollment JOIN Class ON Enrollment.classID = Class.classID AND Enrollment.dropped = 1 JOIN Professor ON Professor.professorID=? AND Class.professorID=?", (professorID, professorID))
+  return {"Class": books.fetchall()}
+
 ## POST
-@app.post("/class/add", status_code=status.HTTP_201_CREATED)
+@app.post("/professor/class/drop_student")
+def drop_student(professorID: int, CWID: int, class_id: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+  cur = db.execute("SELECT * FROM Professor WHERE professorID = ?", (professorID,))
+  professor = cur.fetchone()
+
+  # check if professor exists
+  if not professor:
+     raise HTTPException(status_code=404, detail="Professor not found")
+  # Delete enrollment
+  cur = db.execute("UPDATE Enrollment SET dropped = 1 WHERE classID = ? AND CWID = ?", (class_id, CWID))
+  cur = db.execute("UPDATE Class SET currentEnrollment = currentEnrollment - 1 WHERE classID = ?", (class_id,))
+  db.commit()
+  return {"message": f"Student {CWID} dropped from classes by Professor {professorID}"}
+
+# Registrar
+## POST
+@app.post("/registrar/class/add", status_code=status.HTTP_201_CREATED)
 def create_class(department: str, sectionNum: int, name: str ,maxEnrollement: int ,currentEnrollment: int ,professorID: int, db: sqlite3.Connection = Depends(get_db)
 ):
   
@@ -172,7 +221,7 @@ def create_class(department: str, sectionNum: int, name: str ,maxEnrollement: in
       )
 
 ## POST
-@app.post("/class/remove")
+@app.post("/registrar/class/remove")
 def remove_class(classID: int, db: sqlite3.Connection = Depends(get_db)):
 
   try:
@@ -187,7 +236,7 @@ def remove_class(classID: int, db: sqlite3.Connection = Depends(get_db)):
       )
 
 ## POST
-@app.post("/class/changeProfessor")
+@app.post("/registrar/class/changeProfessor")
 def change_professor(classID: int, professorID: int , db: sqlite3.Connection = Depends(get_db)):
   # gotta add more stuff here
   try:
@@ -201,58 +250,11 @@ def change_professor(classID: int, professorID: int , db: sqlite3.Connection = D
           detail={"type": type(e).__name__, "msg": str(e)},
       )
 
-# professor
+# Waiting List
 ## GET
-@app.get("/professor/")
-def get_professor(db: sqlite3.Connection = Depends(get_db)):
-  books = db.execute("SELECT * FROM Professor")
-  return {"Class": books.fetchall()}
-
-## GET
-@app.get("/professor/{professorID}/class/enrollment/")
-def get_prof_enrollment(professorID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
-  books = db.execute("SELECT Enrollment.enrollmentID, Enrollment.CWID, Enrollment.classID, Enrollment.enrollmentDate, Enrollment.dropped FROM Enrollment JOIN Class ON Enrollment.classID = Class.classID AND Enrollment.dropped = 0 JOIN Professor ON Professor.professorID=? AND Class.professorID=?", (professorID, professorID))
-  return {"Class": books.fetchall()}
-
-## GET
-@app.get("/professor/{professorID}/class/dropped/")
-def get_prof_dropped_students(professorID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
-  books = db.execute("SELECT Enrollment.enrollmentID, Enrollment.CWID, Enrollment.classID, Enrollment.enrollmentDate, Enrollment.dropped FROM Enrollment JOIN Class ON Enrollment.classID = Class.classID AND Enrollment.dropped = 1 JOIN Professor ON Professor.professorID=? AND Class.professorID=?", (professorID, professorID))
-  return {"Class": books.fetchall()}
-
-# enrollment
-## GET
-@app.get("/enrollement/")
-def get_enrollement(db: sqlite3.Connection = Depends(get_db)):
-  books = db.execute("SELECT * FROM Enrollment")
-  return {"Class": books.fetchall()}
-
-## GET
-@app.get("/instructors/classes/{classID}/waitlist")
-def get_class_waitlist(classID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
-  books = db.execute("SELECT * FROM WaitingList WHERE classID = ?", (classID,))
-  return {"Class": books.fetchall()}
-
-## POST
-@app.post("/professor/class/drop_student")
-def drop_student(professorID: int, CWID: int, class_id: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
-  cur = db.execute("SELECT * FROM Professor WHERE professorID = ?", (professorID,))
-  professor = cur.fetchone()
-
-  # check if professor exists
-  if not professor:
-     raise HTTPException(status_code=404, detail="Professor not found")
-  # Delete enrollment
-  cur = db.execute("UPDATE Enrollment SET dropped = 1 WHERE classID = ? AND CWID = ?", (class_id, CWID))
-  cur = db.execute("UPDATE Class SET currentEnrollment = currentEnrollment - 1 WHERE classID = ?", (class_id,))
-  db.commit()
-  return {"message": f"Student {CWID} dropped from classes by Professor {professorID}"}
-
-# student
-## GET
-@app.get("/student/")
-def get_student(db: sqlite3.Connection = Depends(get_db)):
-  books = db.execute("SELECT * FROM Student")
+@app.get("/waitinglist/")
+def get_waitinglist(db: sqlite3.Connection = Depends(get_db)):
+  books = db.execute("SELECT * FROM WaitingList")
   return {"Class": books.fetchall()}
 
 ## GET
@@ -261,13 +263,7 @@ def get_student_waitlist_pos(CWID: int, response: Response, db: sqlite3.Connecti
   books = db.execute("SELECT position from WaitingList WHERE CWID = ?", (CWID,))
   return {"Class": books.fetchall()}
 
-# waiting list
-## GET
-@app.get("/waitinglist/")
-def get_waitinglist(db: sqlite3.Connection = Depends(get_db)):
-  books = db.execute("SELECT * FROM WaitingList")
-  return {"Class": books.fetchall()}
-
+## POST
 @app.post("/students/{CWID}/waiting_list/remove/{classID}")
 def remove_student_from_waiting_list(CWID: int, classID: int, db: sqlite3.Connection = Depends(get_db)):
     try:
@@ -300,3 +296,24 @@ def remove_student_from_waiting_list(CWID: int, classID: int, db: sqlite3.Connec
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"type": type(e).__name__, "msg": str(e)},
         )
+    
+## GET
+@app.get("/professor/{professorID}/classes/{classID}/waitlist")
+def get_class_waitlist(professorID: int, classID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+    # Check if professor exists
+    cur = db.execute("SELECT * FROM Professor WHERE professorID = ?", (professorID,))
+    professor = cur.fetchone()
+    if not professor:
+        raise HTTPException(status_code=404, detail="Professor not found")
+
+    # Check if class belongs to the professor
+    cur = db.execute("SELECT * FROM Class WHERE classID = ? AND professorID = ?", (classID, professorID))
+    class_info = cur.fetchone()
+    if not class_info:
+        raise HTTPException(status_code=404, detail="Class not found or does not belong to the professor")
+
+    # Get the waiting list for the specified class
+    cur = db.execute("SELECT * FROM WaitingList WHERE classID = ?", (classID,))
+    waitlist_entries = cur.fetchall()
+
+    return {"Class": waitlist_entries}
