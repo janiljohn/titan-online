@@ -89,7 +89,7 @@ logging.config.fileConfig(settings.logging_config, disable_existing_loggers=Fals
 ## GET
 @app.get("/class/")
 def get_classes(db: sqlite3.Connection = Depends(get_db)):
-  books = db.execute("SELECT * FROM Class WHERE currentEnrollment < maxEnrollement")
+  books = db.execute("SELECT * FROM Class")
   return {"Class": books.fetchall()}
 
 ## POST
@@ -148,20 +148,23 @@ def drop_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(
 
 ## POST
 @app.post("/class/add", status_code=status.HTTP_201_CREATED)
-def create_class( classID: int, department: str, sectionNum: int, name: str ,maxEnrollement: int ,currentEnrollment: int ,professorID: int, db: sqlite3.Connection = Depends(get_db)
+def create_class(department: str, sectionNum: int, name: str ,maxEnrollement: int ,currentEnrollment: int ,professorID: int, db: sqlite3.Connection = Depends(get_db)
 ):
   
   try:
     # Insert class details into the database
+    class_number = db.execute("SELECT COUNT(*) FROM Class")
+    num = class_number.fetchone()[0] + 1
+
     cur = db.execute(
         """
         INSERT INTO Class (classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID)
+        (num, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID)
     )
     db.commit()
-    return {"message": f"Class {classID} added successfully"}
+    return {"message": f"Class {num} added successfully"}
   except sqlite3.IntegrityError as e:
       raise HTTPException(
           status_code=status.HTTP_409_CONFLICT,
@@ -290,6 +293,3 @@ def remove_student_from_waiting_list(CWID: int, db: sqlite3.Connection = Depends
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"type": type(e).__name__, "msg": str(e)},
         )
-    
-def get_waitlist_position():
-   pass
