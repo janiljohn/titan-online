@@ -23,34 +23,6 @@ class Settings(BaseSettings, env_file=".env", extra="ignore"):
   database: str
   logging_config: str
 
-class Class(BaseModel):
-  classID: int
-  department: str
-  sectionNum: int
-  name: str
-  maxEnrollement: int
-  currentEnrollment: int
-  professorID: int
-
-class Professor(BaseModel):
-  professorID: int
-  firstName: str
-  lastName: str
-  email: str
-
-class Enrollment(BaseModel):
-  enrollmentID: int
-  CWID: int
-  classID: int
-  enrollmentDate: str
-  dropped: bool
-
-class WaitingList(BaseModel):
-  waitingID: int
-  CWID: int
-  classID: int
-  position: int
-
 class Database:
   def __init__(self, database_path):
       self._database_path = database_path
