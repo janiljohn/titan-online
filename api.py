@@ -269,8 +269,8 @@ def get_waitinglist(db: sqlite3.Connection = Depends(get_db)):
   books = db.execute("SELECT * FROM WaitingList")
   return {"Class": books.fetchall()}
 
-@app.post("/students/{CWID}/waiting_list/remove")
-def remove_student_from_waiting_list(CWID: int, db: sqlite3.Connection = Depends(get_db)):
+@app.post("/students/{CWID}/waiting_list/remove/{classID}")
+def remove_student_from_waiting_list(CWID: int, classID: int, db: sqlite3.Connection = Depends(get_db)):
     try:
         # Check if student exists
         cur = db.execute("SELECT * FROM Student WHERE CWID = ?", (CWID,))
@@ -278,14 +278,21 @@ def remove_student_from_waiting_list(CWID: int, db: sqlite3.Connection = Depends
         if not student:
             raise HTTPException(status_code=404, detail="Student not found")
 
-        # Check if student is in waiting list
-        cur = db.execute("SELECT * FROM WaitingList WHERE CWID = ?", (CWID,))
+        # Check if student is in waiting list for a specific class
+        cur = db.execute("SELECT * FROM WaitingList WHERE CWID = ? AND classID = ?", (CWID, classID))
         waiting_entry = cur.fetchone()
         if not waiting_entry:
-            raise HTTPException(status_code=400, detail="Student is not in waiting list")
+            raise HTTPException(status_code=400, detail="Student is not in waiting list for the specified class")
 
         # Remove student from waiting list
-        cur = db.execute("DELETE FROM WaitingList WHERE CWID = ?", (CWID,))
+        cur = db.execute("DELETE FROM WaitingList WHERE CWID = ? AND classID = ?", (CWID, classID))
+
+        # Get the next student in the waiting list for the specific class
+        cur = db.execute("SELECT * FROM WaitingList WHERE classID = ? ORDER BY position ASC LIMIT 1", (classID,))
+        next_waiting_student = cur.fetchone()
+        if next_waiting_student:
+            # Promote the next student in the waiting list
+            cur = db.execute("UPDATE WaitingList SET position = position - 1 WHERE classID = ?", (classID,))
         db.commit()
 
         return {"message": f"Student {CWID} removed from waiting list"}

@@ -184,7 +184,7 @@ INSERT INTO Professor(professorID, firstName, lastName, email)
 VALUES(10, 'Frank', 'Wilson', 'fwilson@fullerton.edu');
 
 INSERT INTO Registrar(registrarID, firstName, lastName, email)
-VALUES(10, 'Ernest', 'Hemingway', 'ehemingway@fullerton.edu')
+VALUES(10, 'Ernest', 'Hemingway', 'ehemingway@fullerton.edu');
 
 
 INSERT INTO Class(classID, department, sectionNum, name, maxEnrollement, currentEnrollment, professorID) 
