@@ -3,6 +3,10 @@
 # Adapted from "Creating Web APIs with Python and Flask"
 # <https://programminghistorian.org/en/lessons/creating-apis-with-python-and-flask>.
 #
+# Remove database
+# rm var/titan_online.db
+# compile the database
+# ./bin/init.sh
 
 import collections
 import contextlib
@@ -17,71 +21,42 @@ from sqlite3 import Connection, connect
 from datetime import datetime
 
 class Settings(BaseSettings, env_file=".env", extra="ignore"):
-    database: str
-    logging_config: str
-
-class Class(BaseModel):
-    classID: int
-    department: str
-    sectionNum: int
-    maxEnrollment: int
-    currentEnrollment: int
-    professorID: int
-
-class Professor(BaseModel):
-    professorID: int
-    firstName: str
-    lastName: str
-    email: str
-
-class Enrollment(BaseModel):
-    enrollmentID: int
-    CWID: int
-    classID: int
-    enrollmentDate: str
-    dropped: bool
-
-class WaitingList(BaseModel):
-    waitingID: int
-    CWID: int
-    classID: int
-    position: int
+  database: str
+  logging_config: str
 
 class Database:
-    def __init__(self, database_path):
-        self._database_path = database_path
-        self._pool = []
+  def __init__(self, database_path):
+      self._database_path = database_path
+      self._pool = []
 
-    def get_connection(self) -> Connection:
-        if not self._pool:
-            connection = connect(self._database_path)
-        else:
-            connection = self._pool.pop()
-        connection.row_factory = sqlite3.Row
-        return connection
+  def get_connection(self) -> Connection:
+      if not self._pool:
+          connection = connect(self._database_path)
+      else:
+          connection = self._pool.pop()
+      connection.row_factory = sqlite3.Row
+      return connection
 
-    def return_connection(self, connection: Connection):
-        self._pool.append(connection)
+  def return_connection(self, connection: Connection):
+      self._pool.append(connection)
 
 # Create a global instance of the Database class
 database = Database("var/titan_online.db")
 
 def get_db():
-    db = database.get_connection()
-    try:
-        yield db
-    finally:
-        database.return_connection(db)
+  db = database.get_connection()
+  try:
+      yield db
+  finally:
+      database.return_connection(db)
 
 def get_logger():
-    return logging.getLogger(__name__)
-
+  return logging.getLogger(__name__)
 
 settings = Settings()
 app = FastAPI()
 
 logging.config.fileConfig(settings.logging_config, disable_existing_loggers=False)
-
 
 # Students
 ## GET
@@ -205,6 +180,7 @@ def get_enrollment(db: sqlite3.Connection = Depends(get_db)):
   return {"Class": books.fetchall()}
 
 # Professor
+
 ## GET
 @app.get("/professor/")
 def get_professor(db: sqlite3.Connection = Depends(get_db)):
@@ -215,6 +191,12 @@ def get_professor(db: sqlite3.Connection = Depends(get_db)):
 @app.get("/professor/{professorID}/class/enrollment/")
 def get_prof_enrollment(professorID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
   books = db.execute("SELECT Enrollment.enrollmentID, Enrollment.CWID, Enrollment.classID, Enrollment.enrollmentDate, Enrollment.dropped FROM Enrollment JOIN Class ON Enrollment.classID = Class.classID AND Enrollment.dropped = 0 JOIN Professor ON Professor.professorID=? AND Class.professorID=?", (professorID, professorID))
+  return {"Class": books.fetchall()}
+
+## GET
+@app.get("/professor/{professorID}/class/dropped/")
+def get_prof_dropped_students(professorID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+  books = db.execute("SELECT Enrollment.enrollmentID, Enrollment.CWID, Enrollment.classID, Enrollment.enrollmentDate, Enrollment.dropped FROM Enrollment JOIN Class ON Enrollment.classID = Class.classID AND Enrollment.dropped = 1 JOIN Professor ON Professor.professorID=? AND Class.professorID=?", (professorID, professorID))
   return {"Class": books.fetchall()}
 
 ## PUT
@@ -355,4 +337,3 @@ def get_class_waitlist(professorID: int, classID: int, response: Response, db: s
     waitlist_entries = cur.fetchall()
 
     return {"Class": waitlist_entries}
-
