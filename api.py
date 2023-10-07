@@ -93,7 +93,7 @@ def get_classes(db: sqlite3.Connection = Depends(get_db)):
   return {"Class": books.fetchall()}
 
 ## POST
-@app.post("/class/enroll/")
+@app.post("student/class/enroll/")
 def enroll_in_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
   # cursor = db.cursor()
 
@@ -125,7 +125,7 @@ def enroll_in_class(student_id: int, class_id: int, db: sqlite3.Connection = Dep
   return {"status": "success", "message": "Enrollment successful"}
 
 ## POST
-@app.post("/class/drop")
+@app.post("student/class/drop")
 def drop_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
   # Check if student exists
   cur = db.execute("SELECT * FROM Student WHERE CWID = ?", (student_id,))
@@ -147,7 +147,7 @@ def drop_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(
   return {"status": "success", "message": "Disenrollment successful"}
 
 ## POST
-@app.post("/class/add", status_code=status.HTTP_201_CREATED)
+@app.post("registrar/class/add", status_code=status.HTTP_201_CREATED)
 def create_class(department: str, sectionNum: int, name: str ,maxEnrollement: int ,currentEnrollment: int ,professorID: int, db: sqlite3.Connection = Depends(get_db)
 ):
   
@@ -172,12 +172,13 @@ def create_class(department: str, sectionNum: int, name: str ,maxEnrollement: in
       )
 
 ## POST
-@app.post("/class/remove")
+@app.post("registrar/class/remove")
 def remove_class(classID: int, db: sqlite3.Connection = Depends(get_db)):
 
   try:
       # Delete class from the database
       cur = db.execute("DELETE FROM Class WHERE classID = ?", (classID,))
+      cur = db.execute("DELETE from Enrollment WHERE classID = ?", (classID,))
       db.commit()
       return {"message": f"Class {classID} removed successfully"}
   except Exception as e:
@@ -187,7 +188,7 @@ def remove_class(classID: int, db: sqlite3.Connection = Depends(get_db)):
       )
 
 ## POST
-@app.post("/class/changeProfessor")
+@app.post("registrar/changeProfessor")
 def change_professor(classID: int, professorID: int , db: sqlite3.Connection = Depends(get_db)):
   # gotta add more stuff here
   try:
@@ -228,7 +229,7 @@ def get_enrollement(db: sqlite3.Connection = Depends(get_db)):
   return {"Class": books.fetchall()}
 
 ## GET
-@app.get("/instructors/classes/{classID}/waitlist")
+@app.get("/professor/classes/{classID}/waitlist")
 def get_class_waitlist(classID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
   books = db.execute("SELECT * FROM WaitingList WHERE classID = ?", (classID,))
   return {"Class": books.fetchall()}
