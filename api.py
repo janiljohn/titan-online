@@ -89,7 +89,7 @@ logging.config.fileConfig(settings.logging_config, disable_existing_loggers=Fals
 ## GET
 @app.get("/class/")
 def get_classes(db: sqlite3.Connection = Depends(get_db)):
-  books = db.execute("SELECT * FROM Class")
+  books = db.execute("SELECT * FROM Class WHERE currentEnrollment < maxEnrollement")
   return {"Class": books.fetchall()}
 
 ## POST
@@ -140,7 +140,9 @@ def drop_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(
       raise HTTPException(status_code=400, detail="Never enrolled in the class")
 
   # Delete enrollment
-  cur = db.execute("DELETE FROM Enrollment WHERE CWID = ? AND classID = ?", (student_id, class_id))
+  # cur = db.execute("DELETE FROM Enrollment WHERE CWID = ? AND classID = ?", (student_id, class_id))
+  cur = db.execute("UPDATE Enrollment SET dropped = 1 WHERE classID = ? AND CWID = ?", (class_id, student_id))
+  cur = db.execute("UPDATE Class SET currentEnrollment = currentEnrollment - 1 WHERE classID = ?", (class_id,))
   db.commit()
   return {"status": "success", "message": "Disenrollment successful"}
 
@@ -206,7 +208,13 @@ def get_professor(db: sqlite3.Connection = Depends(get_db)):
 ## GET
 @app.get("/professor/{professorID}/class/enrollment/")
 def get_prof_enrollment(professorID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
-  books = db.execute("SELECT Enrollment.enrollmentID, Enrollment.CWID, Enrollment.classID, Enrollment.enrollmentDate, Enrollment.dropped FROM Enrollment JOIN Class ON Enrollment.classID = Class.classID JOIN Professor ON Professor.professorID=? AND Class.professorID=?", (professorID, professorID))
+  books = db.execute("SELECT Enrollment.enrollmentID, Enrollment.CWID, Enrollment.classID, Enrollment.enrollmentDate, Enrollment.dropped FROM Enrollment JOIN Class ON Enrollment.classID = Class.classID AND Enrollment.dropped = 0 JOIN Professor ON Professor.professorID=? AND Class.professorID=?", (professorID, professorID))
+  return {"Class": books.fetchall()}
+
+## GET
+@app.get("/professor/{professorID}/class/dropped/")
+def get_prof_dropped_students(professorID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+  books = db.execute("SELECT Enrollment.enrollmentID, Enrollment.CWID, Enrollment.classID, Enrollment.enrollmentDate, Enrollment.dropped FROM Enrollment JOIN Class ON Enrollment.classID = Class.classID AND Enrollment.dropped = 1 JOIN Professor ON Professor.professorID=? AND Class.professorID=?", (professorID, professorID))
   return {"Class": books.fetchall()}
 
 # enrollment
@@ -223,16 +231,17 @@ def get_class_waitlist(classID: int, response: Response, db: sqlite3.Connection 
   return {"Class": books.fetchall()}
 
 ## POST
-@app.post("/professor/{professorID}/class/drop_student")
-def drop_student(professorID: int, CWID: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
+@app.post("/professor/class/drop_student")
+def drop_student(professorID: int, CWID: int, class_id: int, response: Response, db: sqlite3.Connection = Depends(get_db)):
   cur = db.execute("SELECT * FROM Professor WHERE professorID = ?", (professorID,))
   professor = cur.fetchone()
 
   # check if professor exists
   if not professor:
-     raise HTTPException(status_code=404, detail="Student not found")
+     raise HTTPException(status_code=404, detail="Professor not found")
   # Delete enrollment
-  cur = db.execute("DELETE FROM Enrollment WHERE CWID = ?", (CWID,))
+  cur = db.execute("UPDATE Enrollment SET dropped = 1 WHERE classID = ? AND CWID = ?", (class_id, CWID))
+  cur = db.execute("UPDATE Class SET currentEnrollment = currentEnrollment - 1 WHERE classID = ?", (class_id,))
   db.commit()
   return {"message": f"Student {CWID} dropped from classes by Professor {professorID}"}
 
@@ -281,3 +290,6 @@ def remove_student_from_waiting_list(CWID: int, db: sqlite3.Connection = Depends
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"type": type(e).__name__, "msg": str(e)},
         )
+    
+def get_waitlist_position():
+   pass
