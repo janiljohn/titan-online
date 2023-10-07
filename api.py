@@ -89,21 +89,19 @@ logging.config.fileConfig(settings.logging_config, disable_existing_loggers=Fals
 ## GET
 @app.get("/students/")
 def get_students(db: sqlite3.Connection = Depends(get_db)):
-  books = db.execute("SELECT * FROM Student")
-  return {"Class": books.fetchall()}
+  cur = db.execute("SELECT * FROM Student")
+  return {"Class": cur.fetchall()}
 
 # Class
 ## GET
 @app.get("/class/")
 def get_classes(db: sqlite3.Connection = Depends(get_db)):
-  books = db.execute("SELECT * FROM Class")
-  return {"Class": books.fetchall()}
+  cur = db.execute("SELECT * FROM Class")
+  return {"Class": cur.fetchall()}
 
 ## POST
 @app.post("/class/enroll/")
 def enroll_in_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
-  # cursor = db.cursor()
-
   # Check if student exists
   cur = db.execute("SELECT * FROM Student WHERE CWID = ?", (student_id,))
   student = cur.fetchone()
