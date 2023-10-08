@@ -22,10 +22,13 @@ CREATE TABLE Professor (
 
 DROP TABLE IF EXISTS Registrar;
 CREATE TABLE Registrar (
-    registrarID INT PRIMARY KEY,
-    firstName TEXT,
-    lastName TEXT,
-    email TEXT
+    registrar INT,
+    classID INT,
+    CWID INT,
+    professorID INT,
+    FOREIGN KEY (classID) REFERENCES Class(classID),
+    FOREIGN KEY (CWID) REFERENCES Student(CWID),
+    FOREIGN KEY (professorID) REFERENCES Professor(professorID)
 );
 
 DROP TABLE IF EXISTS Class;
@@ -191,8 +194,8 @@ VALUES(9, 'Elizabeth', 'Brown', 'ebrown@fullerton.edu');
 INSERT INTO Professor(professorID, firstName, lastName, email) 
 VALUES(10, 'Frank', 'Wilson', 'fwilson@fullerton.edu');
 
-INSERT INTO Registrar(registrarID, firstName, lastName, email)
-VALUES(10, 'Ernest', 'Hemingway', 'ehemingway@fullerton.edu');
+-- INSERT INTO Registrar(registrarID, firstName, lastName, email)
+-- VALUES(10, 'Ernest', 'Hemingway', 'ehemingway@fullerton.edu');
 
 
 INSERT INTO Class(classID, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID) 

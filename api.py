@@ -76,6 +76,11 @@ def get_classes(db: sqlite3.Connection = Depends(get_db)):
 @app.post("/student/class/enroll/")
 def enroll_in_class(student_id: int, class_id: int, db: sqlite3.Connection = Depends(get_db)):
     enrollment_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cur = db.execute("SELECT auto_enrollment FROM Settings")
+    setting = cur.fetchone()
+    if not setting or not setting[0]: 
+      raise HTTPException(status_code=400, detail="Auto enrollment is currently disabled") 
+
     # Check if student exists
     cur = db.execute("SELECT * FROM Student WHERE CWID = ?", (student_id,))
     student = cur.fetchone()
@@ -180,7 +185,6 @@ def get_enrollment(db: sqlite3.Connection = Depends(get_db)):
   return {"Class": books.fetchall()}
 
 # Professor
-
 ## GET
 @app.get("/professor/")
 def get_professor(db: sqlite3.Connection = Depends(get_db)):
@@ -215,39 +219,65 @@ def drop_student(professorID: int, CWID: int, class_id: int, response: Response,
   return {"message": f"Student {CWID} dropped from classes by Professor {professorID}"}
 
 # Registrar
+## GET
+@app.get("/registrar/")
+def get_registrar(db: sqlite3.Connection = Depends(get_db)):
+  cur = db.execute("SELECT * FROM Registrar")
+  return {"Class": cur.fetchall()}
+
 ## POST
 @app.post("/registrar/class/add", status_code=status.HTTP_201_CREATED)
-def create_class(department: str, sectionNum: int, name: str ,maxEnrollment: int ,currentEnrollment: int ,professorID: int, db: sqlite3.Connection = Depends(get_db)
-):
-  
-  try:
-    # Insert class details into the database
-    class_number = db.execute("SELECT COUNT(*) FROM Class")
-    num = class_number.fetchone()[0] + 1
+def create_class(department: str, sectionNum: int, name: str, maxEnrollment: int, currentEnrollment: int, professorID: int, db: sqlite3.Connection = Depends(get_db)):
+    try:
+        # Insert class details into the database
+        class_number = db.execute("SELECT COUNT(*) FROM Class")
+        num = class_number.fetchone()[0] + 1
 
-    cur = db.execute(
-        """
-        INSERT INTO Class (classID, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-        (num, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID)
-    )
-    db.commit()
-    return {"message": f"Class {num} added successfully"}
-  except sqlite3.IntegrityError as e:
-      raise HTTPException(
-          status_code=status.HTTP_409_CONFLICT,
-          detail={"type": type(e).__name__, "msg": str(e)},
-      )
+        cur = db.execute(
+            """
+            INSERT INTO Class (classID, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (num, department, sectionNum, name, maxEnrollment, currentEnrollment, professorID)
+        )
+        db.commit()
+
+        # Determine registrar ID (assuming it's based on the number of registrar entries)
+        registrar_number = db.execute("SELECT COUNT(*) FROM Registrar")
+        registrar_id = registrar_number.fetchone()[0] + 1
+
+        # Add registrar entry for the new class
+        db.execute("INSERT INTO Registrar (registrar, classID, CWID, professorID) VALUES (?, ?, ?, ?)", (registrar_id, num, None, None))
+        db.commit()
+
+        return {"message": f"Class {num} added successfully with registrar ID {registrar_id}"}
+    except sqlite3.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"type": type(e).__name__, "msg": str(e)},
+        )
 
 ## DELETE
 @app.delete("/registrar/class/remove")
 def remove_class(classID: int, db: sqlite3.Connection = Depends(get_db)):
 
   try:
+      # Check if class exists
+      cur = db.execute("SELECT * FROM Class WHERE classID = ?", (classID,))
+      class_info = cur.fetchone()
+      if not class_info:
+          raise HTTPException(status_code=404, detail="Class not found")
+
+      # Delete associated enrollments
+      cur = db.execute("DELETE FROM Enrollment WHERE classID = ?", (classID,))
+      
+      # Delete associated registrar entries
+      cur = db.execute("DELETE FROM Registrar WHERE classID = ?", (classID,))
+
       # Delete class from the database
       cur = db.execute("DELETE FROM Class WHERE classID = ?", (classID,))
       db.commit()
+      
       return {"message": f"Class {classID} removed successfully"}
   except Exception as e:
       raise HTTPException(
@@ -258,17 +288,73 @@ def remove_class(classID: int, db: sqlite3.Connection = Depends(get_db)):
 # PUT
 @app.put("/registrar/class/changeProfessor")
 def change_professor(classID: int, professorID: int , db: sqlite3.Connection = Depends(get_db)):
-  # gotta add more stuff here
-  try:
-      # Update professor for the class in the database
-      cur = db.execute("UPDATE Class SET professorID = ? WHERE classID = ?", (professorID, classID))
-      db.commit()
-      return {"message": f"Professor for class {classID} changed successfully"}
-  except Exception as e:
-      raise HTTPException(
-          status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-          detail={"type": type(e).__name__, "msg": str(e)},
-      )
+    try:
+        # Check if the class exists
+        cur = db.execute("SELECT * FROM Class WHERE classID = ?", (classID,))
+        class_info = cur.fetchone()
+        if not class_info:
+            raise HTTPException(status_code=404, detail="Class not found")
+
+        # Check if the professor exists
+        cur = db.execute("SELECT * FROM Professor WHERE professorID = ?", (professorID,))
+        professor_info = cur.fetchone()
+        if not professor_info:
+            raise HTTPException(status_code=404, detail="Professor not found")
+
+        # Get the old professorID
+        cur = db.execute("SELECT professorID FROM Class WHERE classID = ?", (classID,))
+        old_professorID = cur.fetchone()[0]
+
+        # Update professor for the class in the database
+        cur = db.execute("UPDATE Class SET professorID = ? WHERE classID = ?", (professorID, classID))
+        db.commit()
+
+        # Update professorID in Registrar table
+        cur = db.execute("UPDATE Registrar SET professorID = ? WHERE classID = ?", (professorID, classID))
+        db.commit()
+
+        # Create a new entry in Registrar to track the change
+        registrar_number = db.execute("SELECT COUNT(*) FROM Registrar")
+        registrar_id = registrar_number.fetchone()[0] + 1
+        db.execute("INSERT INTO Registrar (registrar, classID, CWID, professorID) VALUES (?, ?, ?, ?)", (registrar_id, classID, None, old_professorID))
+        db.commit()
+
+        return {"message": f"Professor for class {classID} changed successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"type": type(e).__name__, "msg": str(e)},
+        )
+
+    
+# POST 
+@app.post("/registrar/waitinglist/{CWID}/enrollment")
+def freeze_enrollment(CWID: int, db: sqlite3.Connection = Depends(get_db)):
+    try:
+        # Check if student exists
+        cur = db.execute("SELECT * FROM Student WHERE CWID = ?", (CWID,))
+        student = cur.fetchone()
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        # Update the enrollment status for the student
+        db.execute("UPDATE Enrollment SET enrollmentDate = ? WHERE CWID = ?", ('frozen', CWID))
+        db.commit()
+
+        # Assuming you want to add an entry in Registrar for tracking the action
+        registrar_number = db.execute("SELECT COUNT(*) FROM Registrar")
+        registrar_id = registrar_number.fetchone()[0] + 1
+
+        # Assuming you want to set classID and professorID as None for this action in Registrar
+        db.execute("INSERT INTO Registrar (registrar, classID, CWID, professorID) VALUES (?, ?, ?, ?)", (registrar_id, None, CWID, None))
+        db.commit()
+
+        return {"status": "success", "message": f"Enrollment for Student {CWID} frozen successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 # Waiting List
 ## GET
